@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BERT Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Chat bubble idle animation */
+      .chat-bubble {
+        animation: chatBubbleIdle 1s ease-in-out infinite alternate;
+      }
+
+      @keyframes chatBubbleIdle {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(-5px);
+        }
+      }
+
+      /* Loading animation */
+      .spinner {
+        border: 4px solid transparent;
+        border-top: 4px solid #1d4ed8;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      #chat-history::-webkit-scrollbar {
+        display: none;
+      }
+
+      #chat-history {
+        -ms-overflow-style: none; /* Internet Explorer 10+ */
+        scrollbar-width: none; /* Firefox */
+      }
+
+      .loader {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top: 4px solid #ffffff;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body class="bg-slate-900 flex items-center justify-center min-h-screen">
+    <div
+      class="container mx-auto p-3 max-w-lg h-screen rounded-lg overflow-hidden flex flex-col"
+    >
+      <!-- Chat History -->
+      <div
+        id="chat-history"
+        class="flex flex-col gap-3 p-4 flex-grow overflow-auto pb-16"
+        style="scroll-behavior: smooth"
+      >
+        <!-- Messages will be appended here -->
+      </div>
+
+      <!-- Languange Selector -->
+      <div class="fixed top-4 right-4 z-50">
+        <select
+          id="language-selector"
+          class="px-4 py-2 border bg-gray-700 text-gray-100 rounded-lg w-full sm:w-auto"
+        >
+          <option value="en">English</option>
+          <option value="id">Indonesian</option>
+        </select>
+      </div>
+      <!-- Loading Spinner -->
+      <div
+        id="loading-spinner"
+        class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 hidden"
+      >
+        <div class="loader"></div>
+      </div>
+      <!-- Context Input Popup -->
+      <div
+        id="context-input-popup"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4"
+      >
+        <div class="bg-white p-6 rounded-lg w-11/12 max-w-lg">
+          <h2 class="text-lg sm:text-xl font-semibold mb-4 text-center">
+            Enter Context
+          </h2>
+          <textarea
+            id="context-input"
+            rows="6"
+            class="p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 w-full text-sm sm:text-base"
+            placeholder="Enter context..."
+          ></textarea>
+          <div
+            class="flex flex-col sm:flex-row justify-end mt-4 space-y-2 sm:space-y-0 sm:space-x-2"
+          >
+            <button
+              onclick="setContext()"
+              class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-400 w-full sm:w-auto"
+            >
+              Set Context
+            </button>
+            <button
+              onclick="toggleContextPopup()"
+              class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-400 w-full sm:w-auto"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Question Input -->
+    <div
+      class="fixed bottom-0 w-full p-4 bg-gray-800 flex flex-wrap items-center justify-center gap-2 sm:gap-2"
+    >
+      <!-- Model Selector (Drop-up style) -->
+      <select
+        id="model-selector"
+        onchange="changeModel()"
+        class="px-4 py-2 border bg-gray-700 text-gray-100 rounded-lg w-full sm:w-auto"
+      >
+        <option value="BERT">BERT</option>
+        <option value="Distil-BERT">Distil-BERT</option>
+        <option value="ALBERT">ALBERT</option>
+        <option value="INDOBERT">INDOBERT</option>
+        <!-- Add more models if needed -->
+      </select>
+
+      <!-- Input Field -->
+      <input
+        type="text"
+        id="question-input"
+        class="flex-1 px-4 py-2 border rounded-lg bg-gray-700 text-gray-100 w-full sm:max-w-xs"
+        placeholder="Type your message..."
+      />
+
+      <!-- Send Button -->
+      <button
+        onclick="askQuestion()"
+        class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-400 w-10 h-10 flex items-center justify-center"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M5 12h14M12 5l7 7-7 7"
+          />
+        </svg>
+      </button>
+
+      <!-- Context Button -->
+      <button
+        onclick="toggleContextPopup()"
+        class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-400 w-10 h-10 flex items-center justify-center"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 2v16a2 2 0 002 2h8a2 2 0 002-2V6l-4-4H8a2 2 0 00-2 2z"
+          />
+        </svg>
+      </button>
+    </div>
+
+    <script>
+      let activeModel = "BERT"; // Default model
+
+      // Function to set the context
+      function setContext() {
+        const context = document.getElementById("context-input").value;
+        fetch("/set_context", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ context: context }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert("Context updated successfully!");
+            document.getElementById("chat-history").innerHTML = ""; // Clear chat history
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+      function toggleLoadingSpinner(show) {
+        const spinner = document.getElementById("loading-spinner");
+        if (show) {
+          spinner.classList.remove("hidden");
+        } else {
+          spinner.classList.add("hidden");
+        }
+      }
+      function changeModel() {
+        const modelSelector = document.getElementById("model-selector");
+        activeModel = modelSelector.value;
+        // Show loading spinner while fetching
+        toggleLoadingSpinner(true);
+        // You can send the selected model to the backend if needed:
+        fetch("/set_model", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model: activeModel }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Model changed to:", data.message);
+            toggleLoadingSpinner(false);
+          })
+          .catch((error) => {
+            console.error("Error changing model:", error);
+            toggleLoadingSpinner(false);
+          });
+      }
+
+      // Function to toggle the context input visibility
+      function toggleContextPopup() {
+        const popup = document.getElementById("context-input-popup");
+        popup.classList.toggle("hidden");
+      }
+
+      function typeText(element, text, delay = 50) {
+        let i = 0;
+        element.innerHTML = ""; // Clear existing content
+        const typingInterval = setInterval(() => {
+          element.innerHTML += text.charAt(i); // Add one character at a time
+          i++;
+
+          if (i === text.length) {
+            clearInterval(typingInterval); // Stop typing once all characters are revealed
+          }
+        }, delay); // Adjust this value for typing speed
+      }
+
+      // Function to ask a question
+      function askQuestion() {
+        const question = document.getElementById("question-input").value;
+        const chatHistoryDiv = document.getElementById("chat-history");
+        const lang = document.getElementById("language-selector").value;
+
+        fetch("/ask_question", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ question: question, language: lang }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // Add question with typing effect
+            const questionElem = document.createElement("div");
+            questionElem.classList.add(
+              "bg-blue-500",
+              "text-white",
+              "p-3",
+              "rounded-2xl",
+              "self-end",
+              "max-w-[75%]",
+              "break-words",
+              "chat-bubble"
+            );
+            questionElem.textContent = "";
+            chatHistoryDiv.appendChild(questionElem);
+
+            // Apply typing effect to the question text
+            typeText(questionElem, data.question);
+
+            // Clear question input
+            document.getElementById("question-input").value = "";
+
+            // Scroll to the bottom of the chat history
+            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+
+            // Simulate answer with typing effect
+            setTimeout(() => {
+              // Add a 'loading' animation with dots
+              const answerElem = document.createElement("div");
+              answerElem.classList.add(
+                "bg-gray-600",
+                "text-white",
+                "p-3",
+                "rounded-2xl",
+                "self-start",
+                "max-w-[75%]",
+                "break-words",
+                "chat-bubble"
+              );
+              answerElem.innerHTML = "<span class='dot-ellipsis'></span>"; // Three dots animation
+              chatHistoryDiv.appendChild(answerElem);
+
+              // Styling for the dot-ellipsis animation with Tailwind CSS and custom animation
+              const style = document.createElement("style");
+              style.innerHTML = `
+                        .dot-ellipsis::after {
+                            content: '.';
+                            animation: dot-blink 1.5s steps(1, end) infinite;
+                        }
+                        .dot-ellipsis::before {
+                            content: '.';
+                            animation: dot-blink 1.5s steps(1, end) infinite 0.3s;
+                        }
+                        .dot-ellipsis {
+                            position: relative;
+                            display: inline-block;
+                            font-weight: bold;
+                        }
+                        @keyframes dot-blink {
+                            0% { content: '.'; }
+                            33% { content: '..'; }
+                            66% { content: '...'; }
+                            100% { content: '.'; }
+                        }
+                    `;
+              document.head.appendChild(style);
+              chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+
+              // Simulate delay for the response
+              setTimeout(() => {
+                // Actual answer is revealed character by character
+                let fullAnswer = data.answer;
+                typeText(answerElem, fullAnswer, 10); // Apply typing effect to answer
+              }, 3000); // 3-second delay to simulate processing before typing starts
+            }, 1000); // Simulate delay before bot starts typing
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+    </script>
+  </body>
+</html>
