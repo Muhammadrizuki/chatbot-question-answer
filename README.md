@@ -2,7 +2,7 @@
 
 1. **Download the model manually** from the following link:
 
-   [Download Model from Google Drive]([https://drive.google.com/file/d/1AbCDefGhIJKlmnOPqrsTUVWXYZ/view?usp=sharing](https://drive.google.com/drive/folders/1Q2pbHktsFzyjH-4UwChVF6x2SwelwvXp?usp=sharing))
+   [Download Model from Google Drive](https://drive.google.com/drive/folders/1Q2pbHktsFzyjH-4UwChVF6x2SwelwvXp?usp=sharing)
 
 2. **Place the downloaded model folder** (e.g., `bert-squad`) into the project directory:
 
