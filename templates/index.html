@@ -81,7 +81,7 @@
       </div>
 
       <!-- Languange Selector -->
-      <div class="fixed top-4 right-4 z-50">
+      <div class="fixed top-4 right-4 z-50 hidden">
         <select
           id="language-selector"
           class="px-4 py-2 border bg-gray-700 text-gray-100 rounded-lg w-full sm:w-auto"
@@ -158,8 +158,10 @@
 
       <!-- Send Button -->
       <button
+      id="send-button"
         onclick="askQuestion()"
-        class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-400 w-10 h-10 flex items-center justify-center"
+        class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-400 w-10 h-10 flex items-center justify-center
+        disabled:opacity-50 disabled:cursor-not-allowed transition"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -201,10 +203,20 @@
 
     <script>
       let activeModel = "BERT"; // Default model
+      let context = "";
+      const sendButton = document.getElementById("send-button");
 
       // Function to set the context
       function setContext() {
-        const context = document.getElementById("context-input").value;
+        let input = document.getElementById("context-input").value;
+
+        if (!input.trim()) {
+          alert("Please enter some context before submitting.");
+          return;
+        }
+
+        context = input;
+
         fetch("/set_context", {
           method: "POST",
           headers: {
@@ -274,9 +286,18 @@
 
       // Function to ask a question
       function askQuestion() {
-        const question = document.getElementById("question-input").value;
+        const question = document.getElementById("question-input").value.trim();
         const chatHistoryDiv = document.getElementById("chat-history");
         const lang = document.getElementById("language-selector").value;
+
+        if (!question) return; // Ignore if empty
+        if (!context.trim()) {
+          alert("Please enter some context before submitting.");
+          return;
+        }
+
+        // Disable send button and input
+        sendButton.disabled = true;
 
         fetch("/ask_question", {
           method: "POST",
@@ -359,11 +380,18 @@
                 // Actual answer is revealed character by character
                 let fullAnswer = data.answer;
                 typeText(answerElem, fullAnswer, 10); // Apply typing effect to answer
+
+                // Re-enable input and send button after bot finishes typing
+                setTimeout(() => {
+                  sendButton.disabled = false;
+                  questionInput.focus();
+                }, fullAnswer.length * 10 + 200); // Wait until typing is done
               }, 3000); // 3-second delay to simulate processing before typing starts
             }, 1000); // Simulate delay before bot starts typing
           })
           .catch((error) => {
             console.error("Error:", error);
+            sendButton.disabled = false;
           });
       }
     </script>
